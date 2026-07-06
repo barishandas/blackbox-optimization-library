@@ -24,10 +24,10 @@ class DEAlgorithm(BBOAlgorithm):
 
     def __init__(
         self,
-        strategy: str = "rand1bin",
+        strategy: str = "currenttobest1bin",
         mutation: float | tuple[float, float] = 0.8,
         recombination: float = 0.9,
-        popsize: int = 10,
+        popsize: int = 5,
         adaptive: bool = True,
         p_adapt_f: float = 0.1,
         p_adapt_cr: float = 0.1,
