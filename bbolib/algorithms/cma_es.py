@@ -17,7 +17,7 @@ class CMAESAlgorithm(BBOAlgorithm):
 
     name = "CMA-ES"
 
-    def __init__(self, sigma0: float | None = None, popsize: int | None = None, restarts: int = 0):
+    def __init__(self, sigma0: float | None = None, popsize: int | None = None, restarts: int = 5):
         self.sigma0 = sigma0
         self.popsize = popsize
         self.restarts = restarts

@@ -5,7 +5,7 @@ from typing import Callable
 
 class PSOAlgorithm(BBOAlgorithm):
     """
-    Canonical PSO with inertia weight (Kennedy & Eberhart 1995).
+    PSO with inertia weight and optional ring topology (Kennedy & Eberhart 1995).
 
     Parameters
     ----------
@@ -14,6 +14,9 @@ class PSOAlgorithm(BBOAlgorithm):
     c1          : cognitive acceleration coefficient
     c2          : social acceleration coefficient
     w_end       : final inertia weight when w='ldiw'
+    topology    : 'global' (canonical gbest) or 'ring' (local lbest, k=2 neighbours)
+                  Ring topology dramatically reduces premature convergence on
+                  multimodal functions by limiting information propagation.
     """
 
     name = "PSO"
@@ -25,12 +28,14 @@ class PSOAlgorithm(BBOAlgorithm):
         c1: float = 2.05,
         c2: float = 2.05,
         w_end: float = 0.4,
+        topology: str = "ring",
     ):
         self.n_particles = n_particles
         self.w = w
         self.c1 = c1
         self.c2 = c2
         self.w_end = w_end
+        self.topology = topology
 
     @property
     def dimension_complexity(self) -> str:
@@ -39,6 +44,16 @@ class PSOAlgorithm(BBOAlgorithm):
     @property
     def space_complexity(self) -> str:
         return "O(n_particles * d)"
+
+    def _neighbourhood_best(self, pbest_f: np.ndarray, pbest_pos: np.ndarray) -> np.ndarray:
+        """Return the best position in each particle's ring neighbourhood (k=2 neighbours each side)."""
+        n = self.n_particles
+        nbest = np.empty_like(pbest_pos)
+        for i in range(n):
+            neighbours = [(i - 2) % n, (i - 1) % n, i, (i + 1) % n, (i + 2) % n]
+            best_idx = neighbours[int(np.argmin(pbest_f[neighbours]))]
+            nbest[i] = pbest_pos[best_idx]
+        return nbest
 
     def minimize(
         self,
@@ -53,7 +68,6 @@ class PSOAlgorithm(BBOAlgorithm):
         lower, upper = bounds[:, 0], bounds[:, 1]
         span = upper - lower
 
-        # initialise swarm
         pos = rng.uniform(lower, upper, size=(self.n_particles, d))
         vel = rng.uniform(-span, span, size=(self.n_particles, d)) * 0.1
         pbest_pos = pos.copy()
@@ -64,7 +78,6 @@ class PSOAlgorithm(BBOAlgorithm):
         history: list[float] = []
         evals_used = 0
 
-        # evaluate initial population
         for i in range(self.n_particles):
             if evals_used >= budget:
                 break
@@ -84,20 +97,24 @@ class PSOAlgorithm(BBOAlgorithm):
                 break
             w_t = (w_start - self.w_end) * (1 - t / max_iter) + self.w_end if self.w == "ldiw" else w_start
 
+            # pick attractor: global best or local neighbourhood best
+            if self.topology == "ring":
+                attractor = self._neighbourhood_best(pbest_f, pbest_pos)
+            else:
+                attractor = np.tile(gbest_pos, (self.n_particles, 1))
+
             r1 = rng.uniform(0, 1, size=(self.n_particles, d))
             r2 = rng.uniform(0, 1, size=(self.n_particles, d))
 
             vel = (
                 w_t * vel
                 + self.c1 * r1 * (pbest_pos - pos)
-                + self.c2 * r2 * (gbest_pos - pos)
+                + self.c2 * r2 * (attractor - pos)
             )
-            # velocity clamp
             v_max = 0.2 * span
             vel = np.clip(vel, -v_max, v_max)
 
-            pos = pos + vel
-            pos = np.clip(pos, lower, upper)
+            pos = np.clip(pos + vel, lower, upper)
 
             for i in range(self.n_particles):
                 if evals_used >= budget:

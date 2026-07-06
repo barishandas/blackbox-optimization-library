@@ -1,9 +1,9 @@
 """
 FD — Finite Differences Gradient Descent.
 
-Estimates the gradient using central differences (2d evaluations per step),
-then takes a projected gradient descent step. Useful as a reference for
-how well gradient information helps when it can be numerically estimated.
+Estimates the gradient via central differences (2d evaluations per step),
+then takes a projected gradient step. Armijo backtracking line search adapts
+the step size at each iteration rather than using a fixed decay schedule.
 """
 import numpy as np
 from .base import BBOAlgorithm, RunResult
@@ -12,14 +12,15 @@ from typing import Callable
 
 class FDAlgorithm(BBOAlgorithm):
     """
-    Central-differences gradient descent with decaying step size.
+    Central-differences gradient descent with Armijo backtracking line search.
 
     Parameters
     ----------
-    step_size   : initial gradient descent step size
-    h           : finite difference interval (perturbation size)
-    decay       : multiplicative step size decay per iteration
-    min_step    : lower bound on step size
+    step_size   : initial step size for line search
+    h           : finite difference interval
+    armijo_c    : Armijo sufficient-decrease constant (0 < c < 1)
+    armijo_rho  : step size shrinkage factor per backtrack (0 < rho < 1)
+    max_backtracks : maximum backtracking iterations per gradient step
     restarts    : number of random restarts when progress stalls
     """
 
@@ -27,16 +28,18 @@ class FDAlgorithm(BBOAlgorithm):
 
     def __init__(
         self,
-        step_size: float = 0.5,
+        step_size: float = 1.0,
         h: float = 1e-4,
-        decay: float = 0.999,
-        min_step: float = 1e-8,
-        restarts: int = 3,
+        armijo_c: float = 1e-4,
+        armijo_rho: float = 0.5,
+        max_backtracks: int = 10,
+        restarts: int = 4,
     ):
         self.step_size = step_size
         self.h = h
-        self.decay = decay
-        self.min_step = min_step
+        self.armijo_c = armijo_c
+        self.armijo_rho = armijo_rho
+        self.max_backtracks = max_backtracks
         self.restarts = restarts
 
     @property
@@ -47,37 +50,48 @@ class FDAlgorithm(BBOAlgorithm):
     def space_complexity(self) -> str:
         return "O(d)"
 
-    def _run_once(self, func, lower, upper, budget, rng, x0=None):
+    def _run_once(self, func, lower, upper, budget, rng, x0):
         d = lower.shape[0]
-        x = x0 if x0 is not None else rng.uniform(lower, upper)
-        step = self.step_size
-        best_f = func(x)
+        x = x0.copy()
+        f_x = func(x)
+        best_f = f_x
         best_x = x.copy()
         history = [best_f]
         evals = 1
+        step = self.step_size
 
-        while evals + 2 * d <= budget:
+        while evals + 2 * d + 1 <= budget:
+            # central differences gradient
             grad = np.zeros(d)
             for i in range(d):
                 e = np.zeros(d); e[i] = self.h
-                f_plus  = func(np.clip(x + e, lower, upper)); evals += 1
-                f_minus = func(np.clip(x - e, lower, upper)); evals += 1
-                grad[i] = (f_plus - f_minus) / (2.0 * self.h)
+                f_p = func(np.clip(x + e, lower, upper)); evals += 1
+                f_m = func(np.clip(x - e, lower, upper)); evals += 1
+                grad[i] = (f_p - f_m) / (2.0 * self.h)
 
             grad_norm = np.linalg.norm(grad)
-            if grad_norm > 1e-12:
-                grad = grad / grad_norm  # normalise to unit step
+            if grad_norm < 1e-14:
+                break  # at a stationary point — trigger restart
+            grad_dir = grad / grad_norm
 
-            x_new = np.clip(x - step * grad, lower, upper)
-            f_new = func(x_new); evals += 1
+            # Armijo backtracking line search
+            alpha = step
+            for _ in range(self.max_backtracks):
+                x_new = np.clip(x - alpha * grad_dir, lower, upper)
+                f_new = func(x_new); evals += 1
+                if f_new <= f_x - self.armijo_c * alpha * grad_norm:
+                    break
+                alpha *= self.armijo_rho
 
-            if f_new < best_f:
-                best_f = f_new
-                best_x = x_new.copy()
-
-            history.append(best_f)
             x = x_new
-            step = max(step * self.decay, self.min_step)
+            f_x = f_new
+            if f_x < best_f:
+                best_f = f_x
+                best_x = x.copy()
+            history.append(best_f)
+
+            # expand step size slightly if line search accepted without shrinking
+            step = min(alpha * 1.2, self.step_size)
 
         return best_x, best_f, evals, history
 
@@ -104,16 +118,15 @@ class FDAlgorithm(BBOAlgorithm):
             if remaining <= 0:
                 break
             x0 = (lower + upper) / 2.0 if r == 0 else rng.uniform(lower, upper)
-            bx, bf, evals, hist = self._run_once(func, lower, upper, min(budget_per_restart, remaining), rng, x0)
-            total_evals += evals
+            bx, bf, ev, hist = self._run_once(func, lower, upper, min(budget_per_restart, remaining), rng, x0)
+            total_evals += ev
             if bf < best_f:
                 best_f = bf
                 best_x = bx.copy()
-            # carry forward the running best across restarts
-            running_best = best_f
+            running = best_f
             for h in hist:
-                running_best = min(running_best, h)
-                all_history.append(running_best)
+                running = min(running, h)
+                all_history.append(running)
 
         return RunResult(
             best_x=best_x,
