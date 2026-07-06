@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+*.so
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Generated outputs
+*.png
+*.pdf
+*.svg
+convergence_*.png
+energy_*.png
+
+# Results data (large CSVs and raw runs — track summaries only)
+results/*/raw_data.csv
+results/*/plots/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
