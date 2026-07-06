@@ -8,7 +8,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .algorithms import CMAESAlgorithm, DEAlgorithm, PSOAlgorithm, RandomSearch
+from .algorithms import CMAESAlgorithm, DEAlgorithm, PSOAlgorithm, RandomSearch, SPSAAlgorithm, FDAlgorithm, PEPGAlgorithm
 from .benchmarks import get_function
 from .runner import BenchmarkRunner
 from .plotting import plot_convergence, plot_summary_bar
@@ -18,6 +18,9 @@ _ALGO_MAP = {
     "de": DEAlgorithm,
     "pso": PSOAlgorithm,
     "random": RandomSearch,
+    "spsa": SPSAAlgorithm,
+    "fd": FDAlgorithm,
+    "pepg": PEPGAlgorithm,
 }
 
 

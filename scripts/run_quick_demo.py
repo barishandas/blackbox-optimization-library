@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import matplotlib.pyplot as plt
 
-from bbolib import BenchmarkRunner, CMAESAlgorithm, DEAlgorithm, PSOAlgorithm, RandomSearch, get_function
+from bbolib import BenchmarkRunner, CMAESAlgorithm, DEAlgorithm, PSOAlgorithm, RandomSearch, SPSAAlgorithm, FDAlgorithm, PEPGAlgorithm, get_function
 from bbolib.plotting import plot_convergence, plot_summary_bar
 
 BUDGET = 50_000
@@ -20,7 +20,7 @@ DIM = 10
 N_RUNS = 5
 TARGET = 1e-6
 
-algos = [CMAESAlgorithm(), DEAlgorithm(), PSOAlgorithm(), RandomSearch()]
+algos = [CMAESAlgorithm(), DEAlgorithm(), PSOAlgorithm(), SPSAAlgorithm(), FDAlgorithm(), PEPGAlgorithm(), RandomSearch()]
 fns = [get_function("sphere"), get_function("rastrigin"), get_function("rosenbrock")]
 
 runner = BenchmarkRunner(measure_energy=False)

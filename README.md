@@ -6,7 +6,7 @@ A continuously updated library for benchmarking **energy efficiency**, **computa
 
 Black-box optimizers treat the objective function as a black box — no gradients, no structure assumed. This library provides:
 
-- **Runnable algorithm wrappers** (CMA-ES, DE, PSO, Random Search)
+- **Runnable algorithm wrappers** (CMA-ES, DE, PSO, SPSA, FD, PEPG, Random Search)
 - **14 standard benchmark functions** (Sphere → Michalewicz, grouped by difficulty)
 - **Benchmark runner** with multi-algorithm × multi-function × multi-dimension cross-product
 - **Energy monitor** (Linux RAPL; psutil CPU-time estimate on other platforms)
@@ -95,6 +95,9 @@ blackbox-optimization-library/
 | CMA-ES | `CMAESAlgorithm` | O(d² · λ) | O(d²) |
 | Differential Evolution | `DEAlgorithm` | O(NP · d) | O(NP · d) |
 | PSO | `PSOAlgorithm` | O(n · d) | O(n · d) |
+| SPSA | `SPSAAlgorithm` | O(d) — 2 evals/step | O(d) |
+| Finite Differences | `FDAlgorithm` | O(d) — 2d evals/step | O(d) |
+| PEPG / PGPE | `PEPGAlgorithm` | O(n_samples · d) | O(n_samples · d) |
 | Random Search | `RandomSearch` | O(d) | O(d) |
 
 ## Example: Programmatic Usage
