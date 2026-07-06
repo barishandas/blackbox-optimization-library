@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from bbolib import BenchmarkRunner, CMAESAlgorithm, DEAlgorithm, PSOAlgorithm, RandomSearch, get_function
 from bbolib.plotting import plot_convergence, plot_summary_bar
 
-BUDGET = 5_000
+BUDGET = 50_000
 DIM = 10
 N_RUNS = 5
 TARGET = 1e-6
